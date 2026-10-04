@@ -1,0 +1,23 @@
+### 创作者1：正常统计
+GET http://localhost:8080/creators/1/stats
+
+### 创作者3：没有发布也返回0
+GET http://localhost:8080/creators/3/stats
+
+### 创建并记录决策
+POST http://localhost:8080/incentive-decisions
+Content-Type: application/json
+
+{
+  "creatorId": 1
+}
+
+### 错误练习：缺少必填字段
+POST http://localhost:8080/incentive-decisions
+Content-Type: application/json
+
+{}
+
+### 错误练习：不存在的创作者
+GET http://localhost:8080/creators/999/stats
+

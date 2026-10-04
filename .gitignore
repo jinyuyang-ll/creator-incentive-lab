@@ -1,0 +1,9 @@
+target/
+.idea/
+.vscode/
+*.iml
+__pycache__/
+.venv/
+ml/*.png
+/Main.java
+
