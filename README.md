@@ -1,15 +1,18 @@
 # 创作者激励系统：7天入职前练习
 
-这是一个能跑通的最小 Spring Boot 项目。它用内存数据完成“读取作者近7天统计 → 生成并记录激励建议”，并配套 SQL、实验评估和机器学习基线。
+这是一个能跑通的最小 Spring Boot 项目。作者近7天统计通过 Spring JDBC 查询 MySQL，激励决策暂时保存在内存中，并配套 SQL、实验评估和机器学习基线。
 
 > 练习口径：过去7天是包含今天的7个自然日，即 `[今天-6天, 今天]`。
 
 ## 先跑起来（第1天）
 
-环境要求：Java 8+、Maven 3.6+、Python 3.9+。当前电脑的 Java 8 可直接运行本项目。
+环境要求：Java 8+、Maven 3.6+、MySQL 8.x、Python 3.9+。当前电脑的 Java 8 和 MySQL 8.4 可运行本项目。
 
 ```powershell
 mvn test
+
+$env:MYSQL_USERNAME="creator_app"
+$env:MYSQL_PASSWORD="你的数据库密码"
 mvn spring-boot:run
 ```
 
@@ -33,7 +36,7 @@ Invoke-RestMethod -Method Post `
 HTTP 请求
   → Controller：解析路径/JSON，校验参数
   → Service：计算7天统计，执行激励规则
-  → Repository：读取作者与帖子，保存决策
+  → Repository：通过 JDBC 读取 MySQL 中的作者与帖子；激励决策暂存内存
   → Controller：把 Java 对象序列化成 JSON
 ```
 
@@ -42,10 +45,10 @@ HTTP 请求
 1. `CreatorController#getStats` 或 `IncentiveDecisionController#create`
 2. `CreatorService#getSevenDayStats`
 3. `IncentiveDecisionService#createDecision`
-4. 两个 `InMemory...Repository`
+4. `CreatorStatsRepository`、`JdbcCreatorRepository` 和 `InMemoryDecisionRepository`
 5. `GlobalExceptionHandler` 和 `RequestLoggingFilter`
 
-内存数据每次重启都会重置，这是本练习有意为之。作者 1 有多条近7天内容，作者 2 只有一条无效内容，作者 3 没有内容。
+作者统计来自 MySQL，因此重启后不会丢失；激励决策仍保存在内存中，重启后会重置。作者4用于验证 LEFT JOIN：即使没有发文，也应返回0统计。
 
 ## 7天安排（每天2–3小时）
 
@@ -87,7 +90,7 @@ git commit -m "Add creator incentive decision endpoint"
 
 ### 第4天：SQL
 
-- 在 PostgreSQL（或兼容环境）执行 `sql/schema-and-data.sql`。
+- 在 MySQL 8.x 执行 `sql/schema-and-data.sql`。
 - 先自己写4题，再对照 `sql/answers.sql`。
 - 手算作者 1、2、4；重点比较 `COUNT(*)` 和 `COUNT(p.post_id)`。
 - 思考为何 LEFT JOIN 的日期过滤要写在 `ON` 中。
@@ -96,7 +99,7 @@ git commit -m "Add creator incentive decision endpoint"
 
 ### 第5天：A/B 实验
 
-先独立回答目标、成本、对照、风险四题，再阅读 `docs/experiment.md`。试着解释“收到激励后发5条”为什么不等于“激励带来5条”。
+先执行 `sql/experiment-samples.sql` 创建统一样本表，再执行 `sql/experiment-analysis.sql`；阅读 `docs/experiment.md`，解释 ITT、SRM、实验前平衡和“收到激励后发5条”为什么不等于“激励带来5条”。
 
 ### 第6天：机器学习
 
@@ -121,7 +124,7 @@ python ml/baseline.py
 - 初级：给 `CreatorStats` 新增“无效内容数”，补测试。
 - 中级：把 `LocalDate.now()`/`Instant.now()` 替换成注入的 `Clock`，让时间测试完全稳定。
 - 中级：增加“接受激励”和“决策后7天结果”的数据结构。
-- 进阶：用 H2/PostgreSQL 和 Spring JDBC 替换内存 Repository，Service 与 Controller 不变。
+- 进阶：为 JDBC Repository 增加数据库集成测试，并将激励决策也持久化到 MySQL。
 
 真实团队的字段口径、分层规范、数据库和实验平台应以入职后的项目为准。
 
