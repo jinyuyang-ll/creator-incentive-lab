@@ -1,7 +1,9 @@
 package com.example.incentive.repository;
 
 import com.example.incentive.model.Creator;
+import com.example.incentive.model.CreatorStats;
 import com.example.incentive.model.PostActivity;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDate;
@@ -14,7 +16,8 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Repository
-public class InMemoryCreatorRepository {
+@Profile("test")
+public class InMemoryCreatorRepository implements CreatorStatsRepository {
     private final Map<Long, Creator> creators = new HashMap<>();
     private final List<PostActivity> posts;
 
@@ -43,5 +46,35 @@ public class InMemoryCreatorRepository {
         return Collections.unmodifiableList(posts.stream()
                 .filter(post -> post.getCreatorId() == creatorId)
                 .collect(Collectors.toList()));
+    }
+
+    @Override
+    public Optional<CreatorStats> findSevenDayStatsByCreatorId(long creatorId) {
+        if (!creators.containsKey(creatorId)) {
+            return Optional.empty();
+        }
+
+        LocalDate today = LocalDate.now();
+        LocalDate startDate = today.minusDays(6);
+        List<PostActivity> creatorPosts = findPostsByCreatorId(creatorId);
+
+        long postCount = creatorPosts.stream()
+                .filter(post -> inRange(post.getPostDate(), startDate, today))
+                .count();
+        long activeDays = creatorPosts.stream()
+                .filter(post -> inRange(post.getPostDate(), startDate, today))
+                .map(PostActivity::getPostDate)
+                .distinct()
+                .count();
+        long validPostCount = creatorPosts.stream()
+                .filter(post -> inRange(post.getPostDate(), startDate, today))
+                .filter(PostActivity::isValid)
+                .count();
+
+        return Optional.of(new CreatorStats(creatorId, postCount, activeDays, validPostCount));
+    }
+
+    private boolean inRange(LocalDate date, LocalDate start, LocalDate end) {
+        return !date.isBefore(start) && !date.isAfter(end);
     }
 }
